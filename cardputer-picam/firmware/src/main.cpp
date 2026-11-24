@@ -350,20 +350,16 @@ static void drawFooter(const String& hint) {
 
 static void push() { cv.pushSprite(0, 0); }
 
-// Landscape is what the UI is drawn for; if a rotation would give a
-// portrait panel, step to the next one. 'o' on the home screen (or
-// Settings > Screen rotation) flips it if it comes up upside down.
+// Rotation 1 is the normal Cardputer landscape. If the screen comes up
+// turned, 'o' on the home screen (or Settings > Rotate screen) steps
+// through all four orientations and remembers the choice.
 static void applyRotation() {
-  M5Cardputer.Display.setRotation(cfg.rot);
-  if (M5Cardputer.Display.width() < M5Cardputer.Display.height()) {
-    cfg.rot = (cfg.rot + 1) & 3;
-    M5Cardputer.Display.setRotation(cfg.rot);
-  }
+  M5Cardputer.Display.setRotation(cfg.rot & 3);
   M5Cardputer.Display.fillScreen(0);
 }
 
 static void cycleRotation() {
-  cfg.rot = (cfg.rot + 2) & 3;  // flip 180, stays landscape
+  cfg.rot = (cfg.rot + 3) & 3;  // turn 90 degrees anticlockwise
   applyRotation();
   saveSettings();
 }
@@ -1433,7 +1429,7 @@ static void screenSettings() {
     items.push_back({"Pi token", cfg.token.length() ? "set" : "none"});
     items.push_back({"Find the Pi again", ""});
     items.push_back({"Brightness", String(cfg.bright * 100 / 255) + "%"});
-    items.push_back({"Flip screen 180", "rot " + String(cfg.rot)});
+    items.push_back({"Rotate screen (o)", String(cfg.rot * 90) + " deg"});
     items.push_back({"Load /picam.cfg from SD", sdOk ? "" : "no SD"});
     items.push_back({"About", APP_VERSION});
     int r = listMenu("Settings", items, sel, "Enter select   Esc back");
