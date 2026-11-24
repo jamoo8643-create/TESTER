@@ -10,6 +10,9 @@ on:
       - "cardputer-picam/**"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,3 +34,13 @@ jobs:
         with:
           name: PiCamRemote
           path: PiCamRemote.bin
+      # Also publish the .bin to a "<branch>-bin" branch so it can be fetched
+      # with plain git (handy where artifact downloads are blocked).
+      - name: Publish .bin to a branch
+        if: github.event_name != 'pull_request'
+        run: |
+          mkdir out && cp PiCamRemote.bin out/ && cd out
+          sha256sum PiCamRemote.bin > PiCamRemote.bin.sha256
+          git init -q -b bin && git add -A
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m "PiCamRemote.bin from ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" bin:refs/heads/${GITHUB_REF_NAME}-bin
