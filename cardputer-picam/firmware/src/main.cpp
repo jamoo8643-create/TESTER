@@ -22,7 +22,7 @@
 #include <vector>
 #include <functional>
 
-#define APP_VERSION "1.1.0"
+#define APP_VERSION "1.1.1"
 
 // ------------------------------------------------------------- theme
 // HAL-red on near-black, matching the pi-setup recorder web UI.
@@ -123,7 +123,7 @@ static void saveSettings() {
   prefs.putString("token", cfg.token);
   prefs.putUChar("bright", cfg.bright);
   prefs.putUChar("qual", cfg.quality);
-  prefs.putUChar("rot", cfg.rot);
+  prefs.putUChar("flip", cfg.rot);
   prefs.end();
 }
 
@@ -145,7 +145,7 @@ static void loadSettings() {
   cfg.token = prefs.getString("token", "");
   cfg.bright = prefs.getUChar("bright", 160);
   cfg.quality = prefs.getUChar("qual", 1);
-  cfg.rot = prefs.getUChar("rot", 1) & 3;
+  cfg.rot = prefs.getUChar("flip", 0) & 1;
   prefs.end();
   // The Pi's own fallback network (setup-picam-ap.sh) is always known.
   bool hasAp = false;
@@ -352,16 +352,24 @@ static void drawFooter(const String& hint) {
 
 static void push() { cv.pushSprite(0, 0); }
 
-// Rotation 1 is the normal Cardputer landscape. If the screen comes up
-// turned, 'o' on the home screen (or Settings > Rotate screen) steps
-// through all four orientations and remembers the choice.
+// M5GFX changed the Cardputer panel's rotation offset in 0.3.0: older
+// versions need setRotation(1) for landscape, 0.3.x needs setRotation(0).
+// Hard-coding 1 turned the whole app 90 degrees on the ADV. Instead, find
+// the rotation that really gives the 240x135 landscape and build on it.
+// cfg.rot is now only 0 (normal) or 1 (flipped 180 degrees).
+static int8_t g_rotBase = -1;
 static void applyRotation() {
-  M5Cardputer.Display.setRotation(cfg.rot & 3);
-  M5Cardputer.Display.fillScreen(0);
+  auto &d = M5Cardputer.Display;
+  if (g_rotBase < 0) {
+    d.setRotation(0);
+    g_rotBase = (d.width() > d.height()) ? 0 : 1;
+  }
+  d.setRotation((g_rotBase + (cfg.rot ? 2 : 0)) & 3);
+  d.fillScreen(0);
 }
 
 static void cycleRotation() {
-  cfg.rot = (cfg.rot + 3) & 3;  // turn 90 degrees anticlockwise
+  cfg.rot ^= 1;  // normal <-> upside down; never portrait
   applyRotation();
   saveSettings();
 }
@@ -1431,7 +1439,7 @@ static void screenSettings() {
     items.push_back({"Pi token", cfg.token.length() ? "set" : "none"});
     items.push_back({"Find the Pi again", ""});
     items.push_back({"Brightness", String(cfg.bright * 100 / 255) + "%"});
-    items.push_back({"Rotate screen (o)", String(cfg.rot * 90) + " deg"});
+    items.push_back({"Flip screen (o)", cfg.rot ? "flipped" : "normal"});
     items.push_back({"Load /picam.cfg from SD", sdOk ? "" : "no SD"});
     items.push_back({"About", APP_VERSION});
     int r = listMenu("Settings", items, sel, "Enter select   Esc back");
