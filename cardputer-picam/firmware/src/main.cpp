@@ -107,7 +107,7 @@ struct Settings {
   String token;
   uint8_t bright = 160;
   uint8_t quality = 1; // 0 smooth/low, 1 balanced, 2 sharp
-  uint8_t rot = 1;     // display rotation (1 = normal Cardputer landscape)
+  uint8_t rot = 0;     // 0 = normal landscape, 1 = flipped 180 degrees
 } cfg;
 
 static void saveSettings() {
