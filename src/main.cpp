@@ -3,6 +3,8 @@
 #include <M5Cardputer.h>
 #include <vector>
 #include <Preferences.h>
+#include <esp_ota_ops.h>
+#include <esp_partition.h>
 #include "engine.h"
 #include "storage.h"
 
@@ -59,6 +61,30 @@ static void applyRotation(int r)
     rotation = r & 3;
     M5Cardputer.Display.setRotation(rotation);
     M5Cardputer.Display.fillScreen(TFT_BLACK);
+}
+
+// Cypher OS: apps run from ota_1 next to a "littlefs" data partition, and
+// return to the launcher by booting app0 with a one-shot flag set.
+static bool underCypher()
+{
+    const esp_partition_t* run = esp_ota_get_running_partition();
+    return run && run->subtype == ESP_PARTITION_SUBTYPE_APP_OTA_1 &&
+           esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "littlefs");
+}
+
+static bool returnToCypher()
+{
+    if (!underCypher()) return false;
+    const esp_partition_t* app0 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, "app0");
+    if (!app0) return false;
+    Preferences cp;
+    cp.begin("cyputeros", false);
+    cp.putBool("returnOnce", true);
+    cp.putBool("bootToApp", false);
+    cp.end();
+    if (esp_ota_set_boot_partition(app0) != ESP_OK) return false;
+    ESP.restart();
+    return true;
 }
 
 static void say(const String& s, uint32_t ms = 1500)
@@ -217,6 +243,10 @@ static void recordSlot()
 // ------------------------------------------------------------------ input
 static void globalKey(uint8_t c, const KeyEvents& k)
 {
+    if (k.fn && c == '`') {  // Fn+Esc: back to Cypher OS
+        if (!returnToCypher()) say("Fn+Esc returns to Cypher OS only");
+        return;
+    }
     switch (c) {
     case ' ':
         setPlaying(!playing);
@@ -389,6 +419,7 @@ static void handleInput()
     KeyEvents k = pollKeys();
     for (uint8_t c : k.down) {
         globalKey(c, k);
+        if (k.fn && c == '`') continue;
         if (c == ' ' || c == KEY_TAB || c == '`' || c == '\\') continue;
         switch (page) {
         case PG_SEQ:    seqKey(c, k); break;

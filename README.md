@@ -8,6 +8,16 @@ A pocket groovebox for the M5Stack Cardputer and Cardputer ADV: four sample trac
 2. Copy it to your SD card, e.g. `/apps/PocketGrit.bin`.
 3. In M5Launcher choose SD, pick the file and install it.
 
+## Install (Cypher OS)
+
+Put `PocketGrit.bin` in `/cypher-puter/apps/` and add an entry to `/cypher-puter/apps/apps.json`:
+
+```json
+{"name": "Pocket Grit", "slug": "pocket-grit", "binary": "PocketGrit.bin", "version": "0.1", "notes": "Groovebox: sampler, sequencer, synth, scope", "status": "ready"}
+```
+
+Inside the app, `Fn` + `` ` `` (Esc) goes back to Cypher OS.
+
 ## Pages
 
 `Tab` goes to the next page, `` ` `` to the previous one, `Space` plays and stops everywhere. If the screen comes up sideways or upside down, press `\` until it's right; the app remembers your choice.
