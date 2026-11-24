@@ -20,7 +20,7 @@
 #include <vector>
 #include <functional>
 
-#define APP_VERSION "1.0.0"
+#define APP_VERSION "1.0.1"
 
 // ------------------------------------------------------------- theme
 // HAL-red on near-black, matching the pi-setup recorder web UI.
@@ -105,6 +105,7 @@ struct Settings {
   String token;
   uint8_t bright = 160;
   uint8_t quality = 1; // 0 smooth/low, 1 balanced, 2 sharp
+  uint8_t rot = 1;     // display rotation (1 = normal Cardputer landscape)
 } cfg;
 
 static void saveSettings() {
@@ -120,6 +121,7 @@ static void saveSettings() {
   prefs.putString("token", cfg.token);
   prefs.putUChar("bright", cfg.bright);
   prefs.putUChar("qual", cfg.quality);
+  prefs.putUChar("rot", cfg.rot);
   prefs.end();
 }
 
@@ -141,6 +143,7 @@ static void loadSettings() {
   cfg.token = prefs.getString("token", "");
   cfg.bright = prefs.getUChar("bright", 160);
   cfg.quality = prefs.getUChar("qual", 1);
+  cfg.rot = prefs.getUChar("rot", 1) & 3;
   prefs.end();
   // The Pi's own fallback network (setup-picam-ap.sh) is always known.
   bool hasAp = false;
@@ -346,6 +349,24 @@ static void drawFooter(const String& hint) {
 }
 
 static void push() { cv.pushSprite(0, 0); }
+
+// Landscape is what the UI is drawn for; if a rotation would give a
+// portrait panel, step to the next one. 'o' on the home screen (or
+// Settings > Screen rotation) flips it if it comes up upside down.
+static void applyRotation() {
+  M5Cardputer.Display.setRotation(cfg.rot);
+  if (M5Cardputer.Display.width() < M5Cardputer.Display.height()) {
+    cfg.rot = (cfg.rot + 1) & 3;
+    M5Cardputer.Display.setRotation(cfg.rot);
+  }
+  M5Cardputer.Display.fillScreen(0);
+}
+
+static void cycleRotation() {
+  cfg.rot = (cfg.rot + 2) & 3;  // flip 180, stays landscape
+  applyRotation();
+  saveSettings();
+}
 
 static void centerText(const String& s, int y, uint16_t col, const lgfx::IFont* f = &fonts::Font2) {
   cv.setFont(f);
@@ -1412,6 +1433,7 @@ static void screenSettings() {
     items.push_back({"Pi token", cfg.token.length() ? "set" : "none"});
     items.push_back({"Find the Pi again", ""});
     items.push_back({"Brightness", String(cfg.bright * 100 / 255) + "%"});
+    items.push_back({"Flip screen 180", "rot " + String(cfg.rot)});
     items.push_back({"Load /picam.cfg from SD", sdOk ? "" : "no SD"});
     items.push_back({"About", APP_VERSION});
     int r = listMenu("Settings", items, sel, "Enter select   Esc back");
@@ -1442,8 +1464,9 @@ static void screenSettings() {
         if (c >= 0) { cfg.bright = (c + 1) * 63; M5Cardputer.Display.setBrightness(cfg.bright); saveSettings(); }
         break;
       }
-      case 7: toast(importSdConfig() ? "Imported" : "No /picam.cfg on SD", C_WARN); pi.host = ""; break;
-      case 8: toast("PiCam Remote " APP_VERSION, C_BLUE, 1500); break;
+      case 7: cycleRotation(); break;
+      case 8: toast(importSdConfig() ? "Imported" : "No /picam.cfg on SD", C_WARN); pi.host = ""; break;
+      case 9: toast("PiCam Remote " APP_VERSION, C_BLUE, 1500); break;
     }
   }
 }
@@ -1472,10 +1495,10 @@ static void splash() {
 void setup() {
   auto mcfg = M5.config();
   M5Cardputer.begin(mcfg, true);
-  M5Cardputer.Display.setRotation(1);
   cv.setColorDepth(16);
   cv.createSprite(W, H);
   loadSettings();
+  applyRotation();
   M5Cardputer.Display.setBrightness(cfg.bright);
   splash();
 
@@ -1513,6 +1536,7 @@ void loop() {
                      if (k.ch == 'r') { quickAction("/api/record/toggle", "Working...", pi.rec ? "Clip saved" : "Recording"); return true; }
                      if (k.ch == 't') { screenTimelapse(); return true; }
                      if (k.ch == 'g') { screenGallery(); return true; }
+                     if (k.ch == 'o') { cycleRotation(); return true; }
                      return false;
                    },
                    []() {

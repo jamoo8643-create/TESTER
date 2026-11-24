@@ -51,7 +51,7 @@ The app reads it on boot, saves the settings, and renames the file to `/picam.cf
 | Where | Keys |
 |---|---|
 | Everywhere | `;` `.` `,` `/` are up, down, left, right. Enter selects. `` ` `` (Esc) or Del goes back |
-| Home | `l` live, `p` photo, `r` record, `t` timelapse, `g` gallery |
+| Home | `l` live, `p` photo, `r` record, `t` timelapse, `g` gallery, `o` flip the screen 180° |
 | Live view | Enter photo, `r` record, `t` timelapse, `i` image tuning, `z`/`x` zoom, arrows pan, `s` save frame to SD, `q` quality (Smooth/Balanced/Sharp), `h` hide HUD |
 | Gallery viewer | `,` `/` previous and next, `d` save to SD, `x` delete |
 | Text boxes | Enter OK, Del erase, Tab cancel |
