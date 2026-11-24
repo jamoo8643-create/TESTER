@@ -17,10 +17,12 @@
 #include <SD.h>
 #include <SPI.h>
 #include <sys/time.h>
+#include <esp_ota_ops.h>
+#include <esp_partition.h>
 #include <vector>
 #include <functional>
 
-#define APP_VERSION "1.0.1"
+#define APP_VERSION "1.1.0"
 
 // ------------------------------------------------------------- theme
 // HAL-red on near-black, matching the pi-setup recorder web UI.
@@ -1467,6 +1469,29 @@ static void screenSettings() {
   }
 }
 
+// ------------------------------------------------------------- Cypher OS
+// Under Cypher OS the launcher lives in ota_0 ("app0") and apps run from
+// ota_1, with a "littlefs" data partition. Only then offer a return; under
+// M5Launcher ota_0 can be some other installed app.
+static bool underCypherOs() {
+  const esp_partition_t* run = esp_ota_get_running_partition();
+  const esp_partition_t* l = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0, "app0");
+  const esp_partition_t* fs = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "littlefs");
+  return run && l && fs && run != l && run->subtype == ESP_PARTITION_SUBTYPE_APP_OTA_1;
+}
+
+static void returnToCypherOs() {
+  Preferences p;
+  if (p.begin("cyputeros", false)) { p.putBool("returnOnce", true); p.putBool("bootToApp", false); p.end(); }
+  const esp_partition_t* l = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0, "app0");
+  if (l && esp_ota_set_boot_partition(l) == ESP_OK) {
+    busy("Back to Cypher OS...");
+    delay(250);
+    ESP.restart();
+  }
+  toast("Return failed", C_HAL);
+}
+
 // ------------------------------------------------------------- home
 static void quickAction(const char* path, const String& doing, const String& okMsg) {
   if (!ensureOnline()) return;
@@ -1522,6 +1547,7 @@ void loop() {
     items.push_back({"Watch on phone (QR)", ""});
     items.push_back({"Pi system", pi.online ? String(pi.temp, 0) + "C" : "", pi.temp > 75 ? C_HAL : C_TEXT});
     items.push_back({"Settings", WiFi.status() == WL_CONNECTED ? WiFi.SSID() : "no WiFi"});
+    if (underCypherOs()) items.push_back({"Return to Cypher OS", "", C_BLUE});
   };
   fill();
   String title = pi.online ? "PiCam  " + pi.host : "PiCam  (offline)";
@@ -1554,6 +1580,7 @@ void loop() {
     case 7: screenLinks(); break;
     case 8: screenSystem(); break;
     case 9: screenSettings(); break;
+    case 10: returnToCypherOs(); break;
     default: if (!pi.online) ensureOnline(true); break;
   }
 }

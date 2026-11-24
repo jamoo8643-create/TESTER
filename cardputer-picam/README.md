@@ -46,6 +46,10 @@ token=THE_TOKEN_THE_PI_PRINTED
 
 The app reads it on boot, saves the settings, and renames the file to `/picam.cfg.done`. Everything can also be changed later under *Settings*.
 
+### Running under Cypher OS instead
+
+PiCam Remote also works as a Cypher OS app. Put `PiCamRemote.bin` in `/cypher-puter/apps/` and add an entry to `/cypher-puter/apps/apps.json`. When it runs from Cypher OS, the home menu shows **Return to Cypher OS**.
+
 ## Keys
 
 | Where | Keys |
