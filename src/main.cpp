@@ -2,6 +2,7 @@
 // 4 sample tracks + 1 synth track, 16 steps, mic sampling, SD loading, live scope.
 #include <M5Cardputer.h>
 #include <vector>
+#include <Preferences.h>
 #include "engine.h"
 #include "storage.h"
 
@@ -49,6 +50,16 @@ static const char* PARAM_NAMES[P_COUNT] = {"WAVE", "DETUNE", "CUTOFF", "RESO", "
                                            "ATTACK", "DECAY", "SUSTAIN", "RELEASE", "VOLUME"};
 static const char* WAVE_NAMES[4] = {"SAW", "SQUARE", "TRI", "SINE"};
 static const char* NOTE_NAMES[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+
+static Preferences prefs;
+static int rotation = 0;
+
+static void applyRotation(int r)
+{
+    rotation = r & 3;
+    M5Cardputer.Display.setRotation(rotation);
+    M5Cardputer.Display.fillScreen(TFT_BLACK);
+}
 
 static void say(const String& s, uint32_t ms = 1500)
 {
@@ -209,6 +220,11 @@ static void globalKey(uint8_t c, const KeyEvents& k)
     switch (c) {
     case ' ':
         setPlaying(!playing);
+        break;
+    case '\\':  // flip/rotate the screen if it comes up sideways; remembered
+        applyRotation(rotation + 1);
+        prefs.putInt("rot", rotation);
+        say(String("screen rotation ") + rotation);
         break;
     case KEY_TAB:
         page = (Page)((page + 1) % PG_COUNT);
@@ -373,7 +389,7 @@ static void handleInput()
     KeyEvents k = pollKeys();
     for (uint8_t c : k.down) {
         globalKey(c, k);
-        if (c == ' ' || c == KEY_TAB || c == '`') continue;
+        if (c == ' ' || c == KEY_TAB || c == '`' || c == '\\') continue;
         switch (page) {
         case PG_SEQ:    seqKey(c, k); break;
         case PG_SYNTH:  synthKey(c, k); break;
@@ -618,7 +634,7 @@ static void splash()
     canvas.drawString("POCKET GRIT", 120, 26);
     canvas.setTextSize(1);
     canvas.setTextColor(C_DIM);
-    canvas.drawString("space play  tab page", 120, 100);
+    canvas.drawString("space play  tab page  \\ rotate", 120, 100);
     canvas.drawString(storage::ok() ? "SD ok" : "no SD card", 120, 114);
     canvas.pushSprite(0, 0);
 }
@@ -631,8 +647,15 @@ void setup()
     // M5GFX 0.3+ gives the Cardputer panels a built-in rotation offset, so the
     // landscape rotation number differs between library versions. Pick
     // whichever one is actually landscape.
-    M5Cardputer.Display.setRotation(0);
-    if (M5Cardputer.Display.width() < M5Cardputer.Display.height()) M5Cardputer.Display.setRotation(1);
+    // Press \\ to step through rotations; the choice is saved in flash.
+    prefs.begin("pgrit", false);
+    int saved = prefs.getInt("rot", -1);
+    if (saved >= 0) {
+        applyRotation(saved);
+    } else {
+        applyRotation(0);
+        if (M5Cardputer.Display.width() < M5Cardputer.Display.height()) applyRotation(1);
+    }
     M5Cardputer.Display.setBrightness(110);
 
     canvas.setColorDepth(8);

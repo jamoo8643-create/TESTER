@@ -10,7 +10,7 @@ A pocket groovebox for the M5Stack Cardputer and Cardputer ADV: four sample trac
 
 ## Pages
 
-`Tab` goes to the next page, `` ` `` to the previous one, `Space` plays and stops everywhere.
+`Tab` goes to the next page, `` ` `` to the previous one, `Space` plays and stops everywhere. If the screen comes up sideways or upside down, press `\` until it's right; the app remembers your choice.
 
 ### SEQ: the beat
 | Key | Does |
