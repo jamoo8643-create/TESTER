@@ -1,0 +1,33 @@
+name: Build Cardputer PiCam Remote
+
+on:
+  push:
+    paths:
+      - "cardputer-picam/**"
+      - ".github/workflows/cardputer-picam.yml"
+  pull_request:
+    paths:
+      - "cardputer-picam/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          key: pio-${{ hashFiles('cardputer-picam/firmware/platformio.ini') }}
+      - run: pip install platformio
+      - run: pio run -d cardputer-picam/firmware
+      - run: cp cardputer-picam/firmware/.pio/build/cardputer/firmware.bin PiCamRemote.bin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PiCamRemote
+          path: PiCamRemote.bin
