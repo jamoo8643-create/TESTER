@@ -1,0 +1,52 @@
+name: Build firmware
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['README.md']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio
+          key: pio-${{ hashFiles('platformio.ini') }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install PlatformIO
+        run: pip install -U platformio
+      - name: Build
+        run: pio run -e cardputer 2>&1 | tee build.log
+        shell: bash -o pipefail {0}
+      - name: Upload build log on failure
+        if: failure()
+        run: |
+          mkdir -p out && cp build.log out/
+          cd out
+          git init -q && git checkout -q -b build-log
+          git add . && git -c user.name=ci -c user.email=ci@local commit -qm "build log ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}" build-log
+      - name: Publish firmware branch
+        run: |
+          mkdir -p out
+          cp .pio/build/cardputer/firmware.bin out/PocketGrit.bin
+          cp build.log out/
+          cd out
+          echo "Built from ${GITHUB_SHA}" > BUILD.txt
+          git init -q && git checkout -q -b firmware
+          git add . && git -c user.name=ci -c user.email=ci@local commit -qm "PocketGrit.bin from ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}" firmware
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PocketGrit
+          path: out/PocketGrit.bin
