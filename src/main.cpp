@@ -628,7 +628,11 @@ void setup()
 {
     auto cfg = M5.config();
     M5Cardputer.begin(cfg, true);
-    M5Cardputer.Display.setRotation(1);
+    // M5GFX 0.3+ gives the Cardputer panels a built-in rotation offset, so the
+    // landscape rotation number differs between library versions. Pick
+    // whichever one is actually landscape.
+    M5Cardputer.Display.setRotation(0);
+    if (M5Cardputer.Display.width() < M5Cardputer.Display.height()) M5Cardputer.Display.setRotation(1);
     M5Cardputer.Display.setBrightness(110);
 
     canvas.setColorDepth(8);
