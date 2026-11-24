@@ -8,7 +8,7 @@ Use your M5Stack Cardputer (or Cardputer ADV) as a handheld remote for the Pi ca
 | **Photo** (Enter in live view, `p` on home) | Full-res still saved to `~/recordings/photo_*.jpg` |
 | **Record clip** (`r`) | picam-recorder (:8090) records the RTSP stream to `~/recordings/clip_*.mp4` |
 | **Timelapse**: start (with name and interval), live frame count, stop, render to MP4 | Runs the `timelapse` command. The livestream stops and restarts automatically, because the camera only allows one consumer |
-| **Image & fisheye** tuning: white balance, EV, brightness, contrast, saturation, sharpness, denoise, fisheye K1/K2, FPS, bitrate, plus presets (Vivid, Night, Mono, Max fisheye, Flat) | Writes `/etc/default/picam-fx` and restarts picam-fx |
+| **Image & fisheye** tuning: **rotation (0/90/180/270)**, white balance, EV, brightness, contrast, saturation, sharpness, denoise, fisheye K1/K2, FPS, bitrate, plus presets (Vivid, Night, Mono, Max fisheye, Flat) | Writes `/etc/default/picam-fx` and restarts picam-fx. Rotation also applies to photos, clips and timelapses (180° is done in the camera ISP for free) |
 | **Camera mode**: Livestream (fisheye fx), PiCam Hub, or Off | Starts and stops the right services in the right order |
 | **Gallery**: browse recordings, hub captures and `~/cardputer-apps`, show thumbnails, **save any file to the Cardputer's SD** (`/DCIM/PiCam`), delete | ffmpeg makes the thumbnails, cached on the Pi |
 | **Save frame** (`s` in live view) | The frame on screen goes straight to the Cardputer's SD card |

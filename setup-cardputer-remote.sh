@@ -16,6 +16,7 @@
 #                            from the Cardputer (Library > Pi apps)
 #
 #  Run:  chmod +x setup-cardputer-remote.sh && ./setup-cardputer-remote.sh
+#  Re-running it is safe (keeps your token; adds new features like ROTATE).
 #        ./setup-cardputer-remote.sh --no-token   (LAN-only, no auth)
 # ================================================================
 set -e
@@ -633,6 +634,7 @@ FX_KEYS = {
     "DENOISE": ["auto", "off", "cdn_off", "cdn_fast", "cdn_hq"],
     "FX_K1": (-1.0, 1.0), "FX_K2": (-1.0, 1.0), "FPS": (1, 30),
     "OUT_SIZE": (240, 1080), "BITRATE": ["1M", "2M", "3M", "4M", "6M"],
+    "ROTATE": ["0", "90", "180", "270"],
 }
 
 
@@ -868,6 +870,7 @@ case "${1:-}" in
         FPS) num_in "$val" 1 30 ;;
         OUT_SIZE) num_in "$val" 240 1080 ;;
         BITRATE) one_of "$val" 1M 2M 3M 4M 6M ;;
+        ROTATE) one_of "$val" 0 90 180 270 ;;
         *) die "fx key not allowed: $key" ;;
       esac
       set_key "$FX_CONF" "$key" "$val"
@@ -918,6 +921,49 @@ sudo tee /etc/avahi/services/picam-remote.service > /dev/null << AVEOF
 </service-group>
 AVEOF
 sudo systemctl restart avahi-daemon 2>/dev/null || true
+
+echo "[+] Adding rotation support (ROTATE in /etc/default/picam-fx)..."
+# Camera mounted sideways or upside down? ROTATE=0|90|180|270.
+# 180 is done free in the Pi's ISP; 90/270 use an ffmpeg transpose.
+if [ -f /etc/default/picam-fx ] && ! grep -qE '^ROTATE=' /etc/default/picam-fx; then
+  printf '\n# Rotation of the whole picture: 0 90 180 270 (set from the Cardputer too)\nROTATE=0\n' \
+    | sudo tee -a /etc/default/picam-fx > /dev/null
+fi
+if [ -f "$HOME/picam-fx.sh" ] && ! grep -q 'picam-remote rotation' "$HOME/picam-fx.sh"; then
+  cp "$HOME/picam-fx.sh" "$HOME/picam-fx.sh.bak"
+  python3 - "$HOME/picam-fx.sh" << 'ROTPY'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+s = s.replace("source /etc/default/picam-fx\n",
+    "source /etc/default/picam-fx\n"
+    "# picam-remote rotation\n"
+    "ROT_ISP=\"\"; ROT_VF=\"\"\n"
+    "case \"${ROTATE:-0}\" in 180) ROT_ISP=\"--rotation 180\";; 90) ROT_VF=\",transpose=1\";; 270) ROT_VF=\",transpose=2\";; esac\n", 1)
+s = s.replace("    --nopreview \\\n    -o - \\\n", "    --nopreview $ROT_ISP \\\n    -o - \\\n", 1)
+s = s.replace("setsar=1\" \\\n", "setsar=1${ROT_VF}\" \\\n", 1)
+open(p, "w").write(s)
+ROTPY
+  grep -q 'ROT_ISP \\' "$HOME/picam-fx.sh" && grep -q 'ROT_VF}' "$HOME/picam-fx.sh" \
+    || { echo "  picam-fx.sh looks different than expected, restored it (rotation off)"; mv "$HOME/picam-fx.sh.bak" "$HOME/picam-fx.sh"; }
+fi
+if [ -f /usr/local/bin/timelapse ] && ! grep -q 'picam-remote rotation' /usr/local/bin/timelapse; then
+  sudo cp /usr/local/bin/timelapse /usr/local/bin/timelapse.bak
+  sudo python3 - /usr/local/bin/timelapse << 'ROTPY'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+s = s.replace("source /etc/default/picam-timelapse\n",
+    "source /etc/default/picam-timelapse\n"
+    "# picam-remote rotation (follows ROTATE in /etc/default/picam-fx)\n"
+    "ROTATE=$(grep -E '^ROTATE=' /etc/default/picam-fx 2>/dev/null | cut -d= -f2 | cut -d' ' -f1)\n"
+    "ROT_ISP=\"\"; ROT_VF=\"\"\n"
+    "case \"${ROTATE:-0}\" in 180) ROT_ISP=\"--rotation 180\";; 90) ROT_VF=\"transpose=1,\";; 270) ROT_VF=\"transpose=2,\";; esac\n", 1)
+s = s.replace("--ev \"$TL_EV\" --nopreview \\\n", "--ev \"$TL_EV\" --nopreview $ROT_ISP \\\n", 1)
+s = s.replace("-vf \"$VF\"", "-vf \"${ROT_VF}$VF\"", 1)
+open(p, "w").write(s)
+ROTPY
+fi
 
 echo "[6/6] systemd service..."
 sudo tee /etc/systemd/system/picam-remote.service > /dev/null << SVCEOF

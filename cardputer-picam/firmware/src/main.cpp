@@ -954,6 +954,7 @@ static void screenImage() {
   if (!(cur["exists"] | false)) { toast("Run setup-fisheye-fx.sh on the Pi", C_WARN, 2200); return; }
 
   std::vector<Param> ps = {
+      {"ROTATE", "Rotation", 0, 0, 0, {"0", "90", "180", "270"}},
       {"AWB", "White balance", 0, 0, 0, {"auto", "daylight", "cloudy", "indoor", "fluorescent", "tungsten", "incandescent"}},
       {"EV", "Exposure (EV)", -10, 10, 0.5, {}},
       {"BRIGHTNESS", "Brightness", -1, 1, 0.05, {}},
