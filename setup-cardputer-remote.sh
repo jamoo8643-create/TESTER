@@ -1,8 +1,8 @@
 #!/bin/bash
 # ================================================================
-#  CardDeck Pi bridge  (picam-remote)  —  for the M5Stack Cardputer
+#  PiCam Remote Pi bridge  (picam-remote)  —  for the M5Stack Cardputer
 # ================================================================
-#  Flask API on :8091 that the CardDeck firmware on the Cardputer
+#  Flask API on :8091 that the PiCam Remote firmware on the Cardputer
 #  talks to. It drives the existing pi-setup camera stack:
 #
 #    picam-fx / mediamtx  (livestream)   picam-hub (:8080)
@@ -26,7 +26,7 @@ CONF=/etc/default/picam-remote
 PORT=8091
 
 echo "╔══════════════════════════════════════════╗"
-echo "║   CardDeck Pi bridge — Setup             ║"
+echo "║   PiCam Remote bridge — Setup            ║"
 echo "╚══════════════════════════════════════════╝"
 
 echo "[1/6] Installing deps..."
@@ -37,7 +37,7 @@ echo "[2/6] Writing config..."
 if [ ! -f "$CONF" ]; then
   if [ "$1" = "--no-token" ]; then TOKEN=""; else TOKEN=$(head -c 6 /dev/urandom | od -An -tx1 | tr -d ' \n'); fi
   sudo tee "$CONF" > /dev/null << CONFEOF
-# CardDeck Pi bridge. Enter this token in CardDeck > Camera > Pi setup.
+# PiCam Remote Pi bridge. Enter this token in PiCam Remote > Settings > Pi token.
 # Leave TOKEN empty to turn auth off (anyone on your LAN can control the camera).
 TOKEN=$TOKEN
 PORT=$PORT
@@ -51,9 +51,9 @@ echo "[3/6] Writing the bridge app..."
 cat > "$APP_DIR/app.py" << 'PYEOF'
 #!/usr/bin/env python3
 """
-CardDeck Pi bridge  (picam-remote)
+PiCam Remote Pi bridge  (picam-remote)
 ==================================
-A small JSON + JPEG API on :8091 that lets the M5Stack Cardputer (CardDeck
+A small JSON + JPEG API on :8091 that lets the M5Stack Cardputer (PiCam Remote
 firmware) drive the PiCam setup from the pi-setup repo:
 
   * live preview frames sized for the Cardputer's 240x135 screen
@@ -802,8 +802,8 @@ def api_file():
 
 @app.route("/")
 def index():
-    return (f"CardDeck Pi bridge {VERSION} on {socket.gethostname()}. "
-            "Point CardDeck on your Cardputer at this host, port "
+    return (f"PiCam Remote Pi bridge {VERSION} on {socket.gethostname()}. "
+            "Point PiCam Remote on your Cardputer at this host, port "
             f"{PORT}.\n"), 200, {"Content-Type": "text/plain"}
 
 
@@ -815,7 +815,7 @@ PYEOF
 echo "[4/6] Installing the root helper (whitelisted actions only)..."
 sudo tee /usr/local/bin/picam-remote-ctl > /dev/null << 'CTLEOF'
 #!/bin/bash
-# picam-remote-ctl — the ONLY thing the CardDeck bridge may run as root.
+# picam-remote-ctl — the ONLY thing the PiCam Remote bridge may run as root.
 # Every service, config key and value is whitelisted here.
 #
 #   picam-remote-ctl svc <start|stop|restart> <service>
@@ -907,7 +907,7 @@ sudo chmod 0440 /etc/sudoers.d/picam-remote
 sudo visudo -c -f /etc/sudoers.d/picam-remote >/dev/null || {
   echo "sudoers rule invalid, removing"; sudo rm -f /etc/sudoers.d/picam-remote; }
 
-echo "[5/6] Advertising on the LAN (mDNS) so CardDeck finds the Pi by itself..."
+echo "[5/6] Advertising on the LAN (mDNS) so PiCam Remote finds the Pi by itself..."
 sudo tee /etc/avahi/services/picam-remote.service > /dev/null << AVEOF
 <?xml version="1.0" standalone='no'?>
 <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
@@ -968,7 +968,7 @@ fi
 echo "[6/6] systemd service..."
 sudo tee /etc/systemd/system/picam-remote.service > /dev/null << SVCEOF
 [Unit]
-Description=CardDeck Pi bridge (picam-remote)
+Description=PiCam Remote Pi bridge (picam-remote)
 After=network-online.target
 Wants=network-online.target
 
@@ -992,12 +992,12 @@ sleep 2
 IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 echo ""
 echo "╔══════════════════════════════════════════════════╗"
-echo "║   ✅ CardDeck Pi bridge online                    ║"
+echo "║   ✅ PiCam Remote bridge online                   ║"
 echo "╠══════════════════════════════════════════════════╣"
 echo "  Address : $IP  port $PORT  ($(hostname).local)"
 if [ -n "$TOKEN" ]; then
 echo "  Token   : $TOKEN"
-echo "            (CardDeck > Camera > Pi setup > Token)"
+echo "            (PiCam Remote > Settings > Pi token)"
 else
 echo "  Token   : none (auth off)"
 fi
